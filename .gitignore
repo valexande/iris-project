@@ -1,0 +1,19 @@
+# environments / IDE
+.venv/
+.idea/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+
+# data and model artefacts (too large for git)
+data/
+models/
+*.parquet
+*.npy
+*.safetensors
+*.bin
+kaggle/**/output/
+
+# personal assistant instructions, not part of the deliverable
+CLAUDE.md

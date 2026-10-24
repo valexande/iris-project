@@ -1,0 +1,17 @@
+# Versions of the Kaggle Python image the notebooks were run on (Python 3.13).
+torch==2.11.0
+transformers==5.16.1
+datasets==4.8.5
+accelerate==1.14.0
+scikit-learn==1.6.1
+scipy
+pandas==2.3.3
+pyarrow==23.0.1
+numpy
+matplotlib
+optuna==5.0.0
+umap-learn==0.5.12
+
+# Local tooling: running notebooks on Kaggle from this repo (kaggle/run.py)
+kaggle>=2.2
+jupytext>=1.19

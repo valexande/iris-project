@@ -1,0 +1,95 @@
+{
+  "n_papers_raw": 3215335,
+  "n_classes_raw": {
+    "group": 8,
+    "archive": 20,
+    "fine": 151
+  },
+  "group_counts": {
+    "Physics": 1549158,
+    "Computer Science": 839298,
+    "Mathematics": 597127,
+    "Statistics": 83829,
+    "Electrical Eng. & Systems Sci.": 83708,
+    "Quantitative Biology": 35382,
+    "Quantitative Finance": 13805,
+    "Economics": 13028
+  },
+  "fine_top10": {
+    "cs.CV": 163892,
+    "cs.LG": 148893,
+    "hep-ph": 145545,
+    "quant-ph": 138590,
+    "hep-th": 115233,
+    "cs.CL": 91007,
+    "cond-mat.mtrl-sci": 73870,
+    "gr-qc": 73869,
+    "cond-mat.mes-hall": 71067,
+    "math.AP": 61044
+  },
+  "fine_bottom10": {
+    "q-bio.TO": 1334,
+    "physics.atm-clus": 1302,
+    "cs.MS": 1234,
+    "q-bio.OT": 1134,
+    "q-bio.CB": 1072,
+    "stat.OT": 830,
+    "cs.OS": 760,
+    "nlin.CG": 738,
+    "q-bio.SC": 706,
+    "cs.GL": 124
+  },
+  "cross_listed_share": 0.483337195035665,
+  "mean_categories_per_paper": 1.7359391789657999,
+  "top_cooccurrence": {
+    "eess->cs": 0.612,
+    "stat->cs": 0.54,
+    "hep-ex->hep-ph": 0.473,
+    "nucl-th->hep-ph": 0.463,
+    "math-ph->math": 0.461,
+    "nucl-ex->nucl-th": 0.454,
+    "gr-qc->hep-th": 0.436,
+    "hep-lat->hep-ph": 0.421,
+    "gr-qc->astro-ph": 0.338,
+    "hep-th->gr-qc": 0.293
+  },
+  "abstract_words": {
+    "count": 3215335.0,
+    "mean": 147.1,
+    "std": 62.7,
+    "min": 1.0,
+    "5%": 49.0,
+    "50%": 145.0,
+    "95%": 255.0,
+    "99%": 287.0,
+    "max": 925.0
+  },
+  "papers_per_year_last5": {
+    "2021": 181599,
+    "2022": 185987,
+    "2023": 209223,
+    "2024": 243690,
+    "2025": 284162
+  },
+  "preprocessing_removed": {
+    "input": 3215335,
+    "withdrawn": 7640,
+    "abstract_under_20_words": 14198,
+    "duplicate_text": 540,
+    "ambiguous_bare_archive_primary": 105183,
+    "kept": 3087774
+  },
+  "dropped_rare_categories": {
+    "cs.GL": 119
+  },
+  "split_sizes": {
+    "train": 59200,
+    "val": 7400,
+    "test": 7400
+  },
+  "n_classes_sample": {
+    "group": 8,
+    "archive": 20,
+    "fine": 148
+  }
+}
