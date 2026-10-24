@@ -42,7 +42,7 @@ import optuna
 import pandas as pd
 import torch
 
-from src import evaluate, viz
+from src import evaluate, taxonomy, viz
 from src.train import LabelSpace, TrainConfig, tfidf_logreg, train_transformer
 from src.tune import baseline_grid, mean_std, optuna_search
 from src.utils import FIG_DIR, RESULTS_DIR, ensure_dirs, find_input, load_json, save_json, set_seed
@@ -51,6 +51,7 @@ set_seed()
 ensure_dirs()
 viz.apply_style()
 optuna.logging.set_verbosity(optuna.logging.WARNING)
+assert torch.cuda.is_available(), "No GPU: set Accelerator to GPU (needs a phone-verified Kaggle account)"
 
 N_TRIALS = 16
 TUNE_SUBSET = 20_000
@@ -60,8 +61,9 @@ train = pd.read_parquet(find_input("train.parquet"))
 val = pd.read_parquet(find_input("val.parquet"))
 test = pd.read_parquet(find_input("test.parquet"))
 best_k = load_json(find_input("best_k.json"))
+discovered = taxonomy.discovered_label(best_k["mapping"])
 for df in (train, val, test):
-    df["label"] = df["fine"].map(lambda c: f"C{best_k['mapping'][c]:02d}")
+    df["label"] = df["fine"].map(discovered)
 sp = LabelSpace(train["label"])
 y_tr, y_va, y_te = (sp.encode(d["label"]) for d in (train, val, test))
 print("classes:", len(sp), "| train/val/test:", len(train), len(val), len(test))

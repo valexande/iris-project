@@ -42,7 +42,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from src import evaluate, viz
+from src import evaluate, taxonomy, viz
 from src.train import LabelSpace, TrainConfig, tfidf_logreg, train_transformer
 from src.utils import DATA_DIR, FIG_DIR, RESULTS_DIR, ensure_dirs, find_input, load_json, save_json, set_seed
 
@@ -50,13 +50,15 @@ set_seed()
 ensure_dirs()
 viz.apply_style()
 print("GPUs:", torch.cuda.device_count(), [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())])
+assert torch.cuda.is_available(), "No GPU: set Accelerator to GPU (needs a phone-verified Kaggle account)"
 
 train = pd.read_parquet(find_input("train.parquet"))
 val = pd.read_parquet(find_input("val.parquet"))
 best_k = load_json(find_input("best_k.json"))
 K = best_k["best_k"]
+discovered = taxonomy.discovered_label(best_k["mapping"])
 for df in (train, val):
-    df["discovered"] = df["fine"].map(lambda c: f"C{best_k['mapping'][c]:02d}")
+    df["discovered"] = df["fine"].map(discovered)
 
 LEVELS = ["group", "archive", "discovered", "fine"]
 spaces = {lvl: LabelSpace(train[lvl]) for lvl in LEVELS}

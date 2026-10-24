@@ -94,22 +94,18 @@ stats["fine_bottom10"] = fine_counts.tail(10).to_dict()
 stats["fine_counts"] = fine_counts.to_dict()
 n_kept = int((fine_counts >= MIN_PER_CLASS).sum())
 
-fig, ax = plt.subplots(figsize=(7.5, 3.8))
+fig, ax = plt.subplots(figsize=(9, 3.8))
 colors = [viz.GROUP_COLORS[taxonomy.group_of(c)] for c in fine_counts.index]
 ax.bar(np.arange(len(fine_counts)), fine_counts.values, color=colors, width=0.9)
 ax.set_yscale("log")
-ax.axhline(MIN_PER_CLASS, color=viz.TEXT_2, lw=1, ls="--")
-ax.text(2, MIN_PER_CLASS * 0.75, f"cut-off: {MIN_PER_CLASS} papers ({n_kept} categories kept)",
-        va="top", fontsize=9, color=viz.TEXT_2)
+cutoff = ax.axhline(MIN_PER_CLASS, color=viz.TEXT, lw=1, ls="--")
 top3 = ", ".join(f"{c} {n / 1e3:.0f}k" for c, n in fine_counts.head(3).items())
-ax.text(len(fine_counts) * 0.98, fine_counts.iloc[0] * 0.9, f"largest: {top3}", ha="right", va="top",
-        fontsize=9, color=viz.TEXT_2)
 ax.set_xlabel("fine category, ranked by size")
 ax.set_ylabel("papers (log scale)")
-ax.set_title(f"{len(fine_counts)} fine categories with a long tail")
-handles = [plt.Rectangle((0, 0), 1, 1, color=viz.GROUP_COLORS[g]) for g in viz.GROUP_ORDER]
-ax.legend(handles, viz.GROUP_ORDER, ncol=2, fontsize=8, loc="upper right", bbox_to_anchor=(1, 0.88))
-ax.set_ylim(top=fine_counts.iloc[0] * 3)
+ax.set_title(f"{len(fine_counts)} fine categories with a long tail (largest: {top3})")
+handles = [plt.Rectangle((0, 0), 1, 1, color=viz.GROUP_COLORS[g]) for g in viz.GROUP_ORDER] + [cutoff]
+labels = viz.GROUP_ORDER + [f"cut-off: {MIN_PER_CLASS} papers\n({n_kept} categories kept)"]
+ax.legend(handles, labels, fontsize=8, loc="upper left", bbox_to_anchor=(1.01, 1))
 ax.grid(axis="x", visible=False)
 viz.save(fig, "fig02_long_tail", FIG_DIR)
 fine_counts.head(15)

@@ -75,3 +75,29 @@ def group_of(cat: str) -> str:
 def is_ambiguous_fine(cat: str) -> bool:
     """True for a bare archive name used as a category when that archive has sub-categories."""
     return "." not in cat and cat in ARCHIVES_WITH_SUBCATS
+
+
+# Names for the k = 12 categories discovered in notebook 02, written after reading each cluster's
+# member list. Keyed by an anchor member, so they survive any renumbering of cluster ids.
+DISCOVERED_NAMES = {
+    "cs.NI": "Systems, networks & info. theory",
+    "cs.LG": "ML, vision & signals",
+    "q-fin.PR": "Quantitative finance",
+    "cs.CL": "AI, language, data & software",
+    "stat.ME": "Statistics, economics & social sci.",
+    "math.AG": "Algebra, geometry & topology",
+    "math.CO": "Discrete math, logic & theory of CS",
+    "astro-ph.GA": "Astrophysics",
+    "hep-ph": "High-energy, nuclear & gravitation",
+    "cond-mat.str-el": "Condensed matter, quantum & atomic",
+    "math.AP": "Analysis, dynamics & math. physics",
+    "q-bio.BM": "Computational science, biology & fluids",
+}
+
+
+def discovered_label(mapping: dict) -> dict:
+    """fine category -> readable discovered-category name (falls back to 'C<id>' for unnamed clusters)."""
+    names = {mapping[a]: n for a, n in DISCOVERED_NAMES.items() if a in mapping}
+    if len(names) != len(set(mapping.values())):
+        names = {}  # anchors don't map one-to-one onto clusters (e.g. a different k): use ids
+    return {c: names.get(i, f"C{i:02d}") for c, i in mapping.items()}

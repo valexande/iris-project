@@ -36,6 +36,7 @@ add_src_to_path()
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import torch
 from scipy.cluster.hierarchy import dendrogram
 from sklearn.metrics import adjusted_rand_score
 
@@ -46,6 +47,7 @@ from src.utils import FIG_DIR, RESULTS_DIR, DATA_DIR, ensure_dirs, find_input, s
 set_seed()
 ensure_dirs()
 viz.apply_style()
+assert torch.cuda.is_available(), "No GPU: set Accelerator to GPU (needs a phone-verified Kaggle account)"
 
 K_MIN, K_MAX = 5, 80
 KS = list(range(2, 31)) + list(range(35, K_MAX + 1, 5))
