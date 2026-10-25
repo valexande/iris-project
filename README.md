@@ -214,7 +214,89 @@ The text supports a topic structure of about a dozen classes, not arXiv's exact 
 ![UMAP](reports/figures/fig11_umap.png)
 ![NMI vs arXiv labels](reports/figures/fig09_nmi_vs_taxonomy.png)
 
-<!-- RESULTS:TRAINING -->
+## 6. Models and training
+
+Every model is trained on the same 59,200-paper training split and scored on the same 7,400-paper
+validation split. Each is trained four times, once per label set: arXiv's **8 groups**, its
+**20 archives**, the **12 discovered categories** from §5, and the **148 fine categories**. Training
+at all four granularities shows how predictability changes with the number of classes, which is the
+second half of the "best number of categories" question.
+
+**Baseline: TF-IDF + logistic regression.** Word uni- and bigrams (200k features, sublinear TF),
+multinomial logistic regression with C = 4 and balanced class weights. It trains in 1–8 minutes on CPU.
+
+**Transformer: `bert-base-uncased`** ([Devlin et al., 2019](#2-literature-review)), fine-tuned
+end-to-end with a linear classification head on the `[CLS]` token. It is an Apache-2.0 English
+checkpoint from the Hugging Face filter in the task. The model is loaded through the PyTorch classes
+of 🤗 Transformers: version 5 of the library (the one installed on Kaggle) has dropped TensorFlow
+support, and the checkpoint's weights are identical in both frameworks. The default configuration
+follows Sun et al. (2019):
+
+| Setting | Value | Why |
+|---|---|---|
+| Input | `title. abstract`, truncated to 256 tokens | 68% of inputs fit entirely; the rest lose the end of the abstract (figure below) |
+| Optimiser | AdamW, lr 2e-5, weight decay 0.01, 10% linear warm-up | Sun et al.'s recommended range |
+| Batch, epochs | 32, 3 | |
+| Loss | cross-entropy weighted by inverse class frequency | the group and archive label sets are imbalanced, because sampling was balanced at the fine level |
+| Model selection | best epoch on validation macro-F1, early stopping with patience 1 | |
+| Hardware | Kaggle T4 ×2, fp16 | **≈ 82 min per run** |
+
+![Token lengths](reports/figures/fig12_token_lengths.png)
+
+## 7. Evaluation
+
+**Metric.** The headline metric is **macro-F1**: the F1 score of each class, averaged with equal
+weight, so small classes count as much as large ones. Accuracy (= micro-F1 for single-label
+classification), weighted-F1 and top-3 accuracy are also reported. All numbers below are on the
+**validation** split; the test split is used only once, in §8.
+
+| Label set | # classes | TF-IDF macro-F1 | BERT macro-F1 | TF-IDF accuracy | BERT accuracy | BERT top-3 acc. |
+|---|---:|---:|---:|---:|---:|---:|
+| arXiv groups | 8 | 0.779 | **0.789** | **0.852** | 0.851 | 0.986 |
+| **Discovered (§5)** | **12** | 0.795 | **0.801** | 0.789 | **0.795** | 0.965 |
+| arXiv archives | 20 | **0.704** | 0.669 | **0.784** | 0.756 | 0.956 |
+| arXiv fine categories | 148 | **0.570** | 0.506 | **0.575** | 0.525 | 0.766 |
+
+Full table: [`results/model_results.csv`](results/model_results.csv).
+
+![F1 vs number of classes](reports/figures/fig13_f1_vs_classes.png)
+
+**What the table shows:**
+
+1. **The 12 discovered categories are the most predictable label set.** They score the highest
+   macro-F1 for both models, higher even than arXiv's 8 groups, despite having 50% more classes.
+   This is independent evidence for §5's choice of k. The categories were picked from unlabelled
+   embeddings, and here a separately trained classifier finds them easier to tell apart than coarser
+   human-made boxes. Topic-based classes are simply cleaner than administrative ones: arXiv's
+   "Computer Science" and "Electrical Engineering" overlap heavily in content (15% of EESS papers
+   are predicted as CS; see the confusion matrix below).
+2. **Beyond about 12 classes, accuracy falls quickly.** Going from 12 to 20 classes costs about
+   10 macro-F1 points, and 148 classes cost 30. Many fine categories are near-duplicates in content,
+   and cross-listing (48% of papers, §3) means the "primary" category is often a judgement call.
+3. **BERT with default settings is only on par with TF-IDF.** BERT is marginally ahead at 8 and 12
+   classes, but behind at 20 and 148. Its validation F1 was **still rising at epoch 3 on every label
+   set** (for example 0.39 → 0.48 → 0.51 on fine categories), so the default 3 epochs at lr 2e-5 is
+   too little training for many-class problems. This is exactly what §8's tuning addresses. Strong
+   TF-IDF baselines are well documented for topic classification, where specific technical vocabulary
+   (e.g. "Hamiltonian", "convolutional", "volatility") carries most of the signal.
+
+**Per-class results on the 12 discovered categories (BERT).** The most distinctive fields are the
+easiest: Astrophysics (F1 0.89), Algebra/geometry/topology (0.87), Quantitative finance (0.87) and
+High-energy physics (0.86). The hardest are the broad, interdisciplinary ones: Analysis, dynamics &
+mathematical physics (0.72), AI/language/data/software (0.73) and ML/vision/signals (0.74). The
+largest confusion is between the last two (9% of AI papers are predicted as ML), which is expected
+for neighbouring areas of computer science.
+
+![Confusion matrices](reports/figures/fig14_confusion.png)
+
+**Most confused fine categories** ([`results/most_confused_fine.csv`](results/most_confused_fine.csv)).
+The top errors at the 148-class level are pairs that are hard to separate even for a human reader:
+`cs.SD` ↔ `eess.AS` (sound vs audio and speech processing, confused in both directions),
+`q-fin.MF` → `q-fin.PR` (mathematical finance vs pricing), `eess.SP` → `cs.IT` (signal processing vs
+information theory), `cs.DM` → `math.CO` (discrete mathematics vs combinatorics), and
+`math.AT` → `math.KT` (algebraic topology vs K-theory). These are the near-duplicates that §5's
+clustering merged into one category.
+
 
 <!-- RESULTS:TUNING -->
 
@@ -245,8 +327,8 @@ GPU and internet) and an API token in `~/.kaggle/access_token`:
 pip install kaggle jupytext
 python kaggle/run.py push 01          && python kaggle/run.py pull 01   # CPU, ~15 min
 python kaggle/run.py push 02 --gpu    && python kaggle/run.py pull 02   # ~30 min
-python kaggle/run.py push 03 --gpu    && python kaggle/run.py pull 03   # ~2 h
-python kaggle/run.py push 04 --gpu    && python kaggle/run.py pull 04   # ~4 h
+python kaggle/run.py push 03 --gpu    && python kaggle/run.py pull 03   # ~6 h
+python kaggle/run.py push 04 --gpu    && python kaggle/run.py pull 04   # ≤ 6 h (self-limiting budget)
 ```
 
 `push` uploads `src/` and the notebooks as a private Kaggle dataset and starts a private Kaggle
