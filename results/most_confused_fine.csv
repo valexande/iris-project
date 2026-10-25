@@ -1,0 +1,16 @@
+true,predicted,count
+cs.SD,eess.AS,25
+q-fin.MF,q-fin.PR,23
+eess.SP,cs.IT,14
+cs.DM,math.CO,14
+q-fin.CP,q-fin.ST,14
+q-fin.CP,q-fin.PR,13
+cond-mat.other,cond-mat.quant-gas,13
+math.RA,math.AC,13
+eess.AS,cs.SD,12
+math.GM,math.NT,11
+math.AT,math.KT,11
+astro-ph.CO,astro-ph.GA,11
+physics.gen-ph,physics.hist-ph,11
+cond-mat.str-el,cond-mat.supr-con,11
+physics.optics,nlin.PS,10

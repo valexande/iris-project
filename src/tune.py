@@ -40,7 +40,8 @@ def suggest(trial, base: TrainConfig) -> TrainConfig:
     )
 
 
-def optuna_search(base: TrainConfig, tr_texts, y_tr, va_texts, y_va, n_classes: int, n_trials: int):
+def optuna_search(base: TrainConfig, tr_texts, y_tr, va_texts, y_va, n_classes: int, n_trials: int,
+                  timeout: float | None = None):
     def objective(trial):
         cfg = suggest(trial, base)
         scores, info = train_transformer(cfg, tr_texts, y_tr, {"val": (va_texts, y_va)}, n_classes,
@@ -58,7 +59,7 @@ def optuna_search(base: TrainConfig, tr_texts, y_tr, va_texts, y_va, n_classes: 
     study.enqueue_trial({"learning_rate": base.learning_rate, "batch_size": base.batch_size, "epochs": base.epochs,
                          "warmup_ratio": base.warmup_ratio, "weight_decay": base.weight_decay,
                          "max_length": base.max_length, "loss": base.loss, "dropout": 0.1})
-    study.optimize(objective, n_trials=n_trials, gc_after_trial=True)
+    study.optimize(objective, n_trials=n_trials, timeout=timeout, gc_after_trial=True)
     return study
 
 

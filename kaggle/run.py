@@ -24,7 +24,7 @@ SRC_DATASET = f"{USER}/arxiv-clf-src"
 ARXIV_DATASET = "Cornell-University/arxiv"
 
 # Which earlier notebooks' outputs each notebook reads (attached as kernel_sources).
-DEPENDS = {"01": [], "02": ["01"], "03": ["01", "02"], "04": ["01", "02", "03"]}
+DEPENDS = {"01": [], "02": ["01"], "03": ["01", "02"], "04": ["01", "02"]}
 
 
 def sh(*args, check=True):

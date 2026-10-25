@@ -3,18 +3,21 @@
 #
 # All on the **discovered-k** label set from notebook 02.
 #
-# 1. **Model selection:** `bert-base-uncased` (from notebook 03) vs `bert-base-cased` vs
-#    `distilbert-base-uncased`, all with the default configuration on the full training set.
+# Notebook 03 showed one full-size BERT run takes ~80 min on Kaggle's T4s, so every training here uses
+# a class-balanced **20k-paper subset** of the training split (validation and test stay full-size).
+#
+# 1. **Model selection:** `bert-base-uncased` vs `bert-base-cased` vs `distilbert-base-uncased`,
+#    all with the default configuration.
 #    All three are Apache-2.0 English BERT-family checkpoints with TensorFlow weights, as the task's
 #    Hugging Face filter asks.
 # 2. **Optuna** (TPE sampler, median pruner) on the winner: learning rate, batch size, epochs, warmup,
-#    weight decay, max length, loss (weighted CE vs focal) and dropout. Trials use a 20k-paper training
-#    subset to keep GPU time low; the first trial is the default configuration.
+#    weight decay, max length, loss (weighted CE vs focal) and dropout. Trials use a 10k-paper subset
+#    of that; the first trial is the default configuration.
 # 3. **Baseline grid search:** C × n-gram range × class weighting for TF-IDF + logistic regression.
-# 4. **Final:** retrain default and tuned configurations on the full training set with 3 seeds each,
+# 4. **Final:** retrain default and tuned configurations on the 20k subset with up to 3 seeds each,
 #    then evaluate once on the held-out **test** split (mean ± std).
 #
-# Runs on a Kaggle GPU (T4 ×2, ~4 h).
+# Runs on a Kaggle GPU (T4 ×2) under a hard 6 h time budget (see `BUDGET_HOURS`).
 
 # %%
 import glob
@@ -37,6 +40,8 @@ add_src_to_path()
 
 from dataclasses import asdict, replace
 
+import time
+
 import matplotlib.pyplot as plt
 import optuna
 import pandas as pd
@@ -53,8 +58,19 @@ viz.apply_style()
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 assert torch.cuda.is_available(), "No GPU: set Accelerator to GPU (needs a phone-verified Kaggle account)"
 
-N_TRIALS = 16
-TUNE_SUBSET = 20_000
+N_TRIALS = 12
+# Kaggle kills a session at 12 h. The notebook keeps its own clock and stops starting new work
+# once the next step would not fit in BUDGET_HOURS, so a slow GPU costs runs, never the whole session.
+BUDGET_HOURS = 6.0
+T0 = time.time()
+
+
+def hours_left():
+    return BUDGET_HOURS - (time.time() - T0) / 3600
+
+
+TRAIN_SUBSET = 20_000
+TUNE_SUBSET = 10_000
 SEEDS = [42, 43, 44]
 
 train = pd.read_parquet(find_input("train.parquet"))
@@ -64,20 +80,19 @@ best_k = load_json(find_input("best_k.json"))
 discovered = taxonomy.discovered_label(best_k["mapping"])
 for df in (train, val, test):
     df["label"] = df["fine"].map(discovered)
+train = (train.groupby("label", group_keys=False).sample(frac=TRAIN_SUBSET / len(train), random_state=0)
+         .reset_index(drop=True))
 sp = LabelSpace(train["label"])
 y_tr, y_va, y_te = (sp.encode(d["label"]) for d in (train, val, test))
 print("classes:", len(sp), "| train/val/test:", len(train), len(val), len(test))
 
-prior = pd.read_csv(find_input("model_results.csv"))
-prior_bert = prior.query("model == 'BERT-base' and label_set == 'discovered'").iloc[0]
 
 # %% [markdown]
 # ## 1. Model selection
 
 # %%
-selection = [{"model_name": "bert-base-uncased", "macro_f1": prior_bert["macro_f1"],
-              "accuracy": prior_bert["accuracy"], "train_seconds": prior_bert["train_seconds"]}]
-for name in ["bert-base-cased", "distilbert-base-uncased"]:
+selection = []
+for name in ["bert-base-uncased", "bert-base-cased", "distilbert-base-uncased"]:
     scores, info = train_transformer(TrainConfig(model_name=name), train["text"], y_tr,
                                      {"val": (val["text"], y_va)}, len(sp), f"/tmp/ckpt/sel_{name}")
     m = evaluate.metrics(y_va, scores["val"], sp.names)
@@ -96,8 +111,13 @@ selection
 
 # %%
 sub = train.groupby("label", group_keys=False).sample(frac=TUNE_SUBSET / len(train), random_state=0)
+# Reserve time for two full final runs (one default, one tuned) plus the baseline grid, using the
+# measured duration of a full BERT run from notebook 03 and of the model-selection runs above.
+RUN_HOURS = selection["train_seconds"].max() / 3600 * 1.15
+optuna_hours = hours_left() - 2 * RUN_HOURS - 0.75
+print(f"full run ~ {RUN_HOURS:.2f} h | Optuna budget {optuna_hours:.2f} h")
 study = optuna_search(TrainConfig(model_name=BEST_MODEL), sub["text"], sp.encode(sub["label"]),
-                      val["text"], y_va, len(sp), N_TRIALS)
+                      val["text"], y_va, len(sp), N_TRIALS, timeout=max(optuna_hours, 0.25) * 3600)
 trials = study.trials_dataframe()
 trials.to_csv(RESULTS_DIR / "optuna_trials.csv", index=False)
 print("best trial:", study.best_trial.number, study.best_value, study.best_params)
@@ -113,7 +133,7 @@ ax.plot(done["number"], done["value"].cummax(), "-", color=viz.TEXT_2, lw=1.5, l
 if len(pruned):
     ax.plot(pruned["number"], [done["value"].min()] * len(pruned), "x", color=viz.SERIES[1], label="pruned")
 ax.set_xlabel("trial")
-ax.set_ylabel("validation macro-F1 (20k subset)")
+ax.set_ylabel("validation macro-F1 (10k-paper trials)")
 ax.set_title("Optuna optimisation history")
 ax.legend(loc="lower right")
 
@@ -144,7 +164,7 @@ grid
 
 # %% [markdown]
 # ## 4. Final models on the test set
-# Default vs tuned configuration, each retrained on the full training split with three seeds.
+# Default vs tuned configuration, each retrained on the 20k training subset with up to three seeds (as many as the time budget allows).
 # The test split is used here for the first and only time.
 
 # %%
@@ -155,8 +175,14 @@ tuned_cfg = replace(TrainConfig(model_name=BEST_MODEL), early_stopping_patience=
 configs = {"default": TrainConfig(model_name=BEST_MODEL), "tuned": tuned_cfg}
 
 final_rows, per_class = [], {}
-for label, cfg in configs.items():
-    for seed in SEEDS:
+# Seed-major order: the first seed of both configs always runs; later seeds run only if they fit.
+seed_hours = 2 * RUN_HOURS
+for seed in SEEDS:
+    if seed != SEEDS[0] and hours_left() < seed_hours * 1.1 + 0.25:
+        print(f"skipping seed {seed}: {hours_left():.2f} h left, a seed takes ~{seed_hours:.2f} h")
+        break
+    seed_start = time.time()
+    for label, cfg in configs.items():
         scores, info = train_transformer(replace(cfg, seed=seed), train["text"], y_tr,
                                          {"val": (val["text"], y_va), "test": (test["text"], y_te)},
                                          len(sp), f"/tmp/ckpt/final_{label}_{seed}")
@@ -166,8 +192,10 @@ for label, cfg in configs.items():
                                **{k: v for k, v in m.items() if k != "per_class"}})
             if split == "test" and seed == SEEDS[0]:
                 per_class[label] = m["per_class"]
-        print(final_rows[-1])
+        print(final_rows[-1], f"| {hours_left():.2f} h left", flush=True)
+        pd.DataFrame(final_rows).to_csv(RESULTS_DIR / "final_results_runs.csv", index=False)
         torch.cuda.empty_cache()
+    seed_hours = (time.time() - seed_start) / 3600
 
 g = grid.iloc[0]
 scores, _ = tfidf_logreg(train["text"], y_tr, {"val": val["text"], "test": test["text"]}, C=g["C"],

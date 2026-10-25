@@ -141,14 +141,13 @@ fig, ax = plt.subplots(figsize=(7, 4))
 for (model, d), color in zip(results.groupby("model", sort=False), viz.SERIES):
     d = d.sort_values("n_classes")
     ax.plot(d["n_classes"], d["macro_f1"], "-o", color=color, label=model, mec=viz.SURFACE, mew=2, ms=8)
-    for _, r in d.iterrows():
-        ax.annotate(f"{r['label_set']} ({r['n_classes']})", (r["n_classes"], r["macro_f1"]),
-                    textcoords="offset points", xytext=(6, 6 if model == "BERT-base" else -12),
-                    fontsize=8, color=viz.TEXT_2)
+levels = results.drop_duplicates("label_set").sort_values("n_classes")
 ax.set_xscale("log")
-ax.set_xlabel("number of classes (log scale)")
+ax.set_xticks(levels["n_classes"], [f"{r.label_set}\n{r.n_classes}" for r in levels.itertuples()])
+ax.minorticks_off()
+ax.set_xlabel("label set and number of classes (log scale)")
 ax.set_ylabel("validation macro-F1")
-ax.set_title("Finer label sets are harder; BERT leads at every granularity")
+ax.set_title("BERT edges out TF-IDF at 8 and 12 classes, falls behind at 20 and 148")
 ax.legend(loc="lower left")
 viz.save(fig, "fig13_f1_vs_classes", FIG_DIR)
 
