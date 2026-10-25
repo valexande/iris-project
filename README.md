@@ -3,7 +3,17 @@
 Classify arXiv papers from their abstracts into an **unknown** number of subject categories, find the
 best number of categories, and train a Hugging Face transformer to predict them.
 
-<!-- RESULTS:TLDR -->
+> **TL;DR**
+> - **Best number of categories: 12** (robust range 12–16), found from SPECTER2 embeddings of the
+>   abstracts without using any labels. The 12 categories are research topics, e.g. *Astrophysics*,
+>   *ML, vision & signals*, *Algebra, geometry & topology* ([§5](#5-discovering-the-number-of-categories)).
+> - The 12 discovered categories are **easier to predict than arXiv's own 8 groups**, despite having
+>   more classes (validation macro-F1 0.801 vs 0.789). Beyond about 12 classes, accuracy drops fast:
+>   0.669 at 20 archives, 0.506 at 148 fine categories ([§7](#7-evaluation)).
+> - **Best model: fine-tuned `bert-base-uncased`**: test macro-F1 **0.782**, top-3 accuracy 0.955
+>   on the 12 categories. A tuned TF-IDF + logistic-regression baseline is within 0.4 points
+>   (0.778), and tuning's gain was within noise ([§8](#8-model-selection-and-hyperparameter-tuning)).
+> - Everything ran on free Kaggle GPUs; notebooks, figures and every number below are in this repo.
 
 ## Contents
 
@@ -220,7 +230,8 @@ Every model is trained on the same 59,200-paper training split and scored on the
 validation split. Each is trained four times, once per label set: arXiv's **8 groups**, its
 **20 archives**, the **12 discovered categories** from §5, and the **148 fine categories**. Training
 at all four granularities shows how predictability changes with the number of classes, which is the
-second half of the "best number of categories" question.
+second half of the "best number of categories" question. Notebook:
+[`03_train_evaluate`](notebooks/03_train_evaluate.ipynb).
 
 **Baseline: TF-IDF + logistic regression.** Word uni- and bigrams (200k features, sublinear TF),
 multinomial logistic regression with C = 4 and balanced class weights. It trains in 1–8 minutes on CPU.
@@ -276,7 +287,7 @@ Full table: [`results/model_results.csv`](results/model_results.csv).
 3. **BERT with default settings is only on par with TF-IDF.** BERT is marginally ahead at 8 and 12
    classes, but behind at 20 and 148. Its validation F1 was **still rising at epoch 3 on every label
    set** (for example 0.39 → 0.48 → 0.51 on fine categories), so the default 3 epochs at lr 2e-5 is
-   too little training for many-class problems. This is exactly what §8's tuning addresses. Strong
+   too little training for many-class problems. §8 tests whether tuning closes this gap. Strong
    TF-IDF baselines are well documented for topic classification, where specific technical vocabulary
    (e.g. "Hamiltonian", "convolutional", "volatility") carries most of the signal.
 
@@ -294,13 +305,135 @@ The top errors at the 148-class level are pairs that are hard to separate even f
 `cs.SD` ↔ `eess.AS` (sound vs audio and speech processing, confused in both directions),
 `q-fin.MF` → `q-fin.PR` (mathematical finance vs pricing), `eess.SP` → `cs.IT` (signal processing vs
 information theory), `cs.DM` → `math.CO` (discrete mathematics vs combinatorics), and
-`math.AT` → `math.KT` (algebraic topology vs K-theory). These are the near-duplicates that §5's
-clustering merged into one category.
+`math.AT` → `math.KT` (algebraic topology vs K-theory). **Every one of the seven most confused pairs
+falls inside a single discovered category**: these are exactly the near-duplicates that §5's
+clustering merged, found again here by a supervised model.
+
+## 8. Model selection and hyperparameter tuning
+
+All of §8 uses the **12 discovered categories**. A full-size BERT run takes about 80 minutes on
+Kaggle's T4 GPUs, so every training here uses a **class-balanced 20,000-paper subset** of the training
+split; validation and test stay full-size (7,400 papers each). Scores are therefore about 2 points
+lower than in §7, which trained on 59,200 papers, but every comparison within §8 is like for like. The
+notebook runs under a hard 6-hour time budget: it measures how long a run takes and only starts work
+that fits. Notebook: [`04_tuning`](notebooks/04_tuning.ipynb).
+
+### 8.1 Model selection
+
+Three Apache-2.0 English BERT-family checkpoints from the task's Hugging Face filter, each with the
+default configuration of §6:
+
+| Model | Parameters | Val macro-F1 | Val accuracy | Training time |
+|---|---:|---:|---:|---:|
+| **`bert-base-uncased`** | 110M | **0.779** | **0.771** | 29 min |
+| `bert-base-cased` | 108M | 0.777 | 0.771 | 29 min |
+| `distilbert-base-uncased` | 66M | 0.772 | 0.764 | 15 min |
+
+`bert-base-uncased` is selected, but the margin is small: lower-casing makes no real difference for
+abstracts, and **DistilBERT reaches 99% of BERT's macro-F1 in half the time**. When training cost
+matters, DistilBERT is the better trade-off.
+
+### 8.2 Hyperparameter search (Optuna)
+
+[Optuna](https://optuna.org) with a TPE sampler and a median pruner (which stops trials that are
+behind the median after an epoch) searched 8 hyperparameters on a 10,000-paper subset:
+
+| Hyperparameter | Search range | Default | Best found |
+|---|---|---:|---:|
+| Learning rate | 1e-5 to 1e-4, log scale | 2e-5 | **9.7e-5** |
+| Batch size | 16, 32, 64 | 32 | 32 |
+| Epochs | 2 to 4 | 3 | 3 |
+| Warm-up ratio | 0 to 0.15 | 0.10 | 0.077 |
+| Weight decay | 0 to 0.1 | 0.01 | 0.053 |
+| Max length (tokens) | 128, 256, 384 | 256 | 256 |
+| Loss | weighted cross-entropy, focal | weighted CE | weighted CE |
+| Classifier dropout | 0 to 0.3 | 0.1 | 0.070 |
+
+12 trials fitted in the time budget (9 completed, 3 pruned). The first trial was the default
+configuration, so the search could only match or improve on it. The best trial reached validation
+macro-F1 **0.766 versus 0.752 for the default** (+1.4 points). The fANOVA importance analysis puts
+**learning rate first**: the best trials used a learning rate about 5× the default, consistent with
+§7's finding that the default under-trains. Batch size, maximum length and loss function had almost
+no effect, and focal loss brought nothing over weighted cross-entropy (unsurprising, since the classes
+here are balanced). With only 12 trials these importances are indicative, not precise.
+
+![Optuna](reports/figures/fig15_optuna.png)
+
+### 8.3 Baseline tuning
+
+For a fair comparison the TF-IDF baseline was tuned too: a grid over regularisation C ∈ {1, 4, 16},
+n-grams ∈ {1, 1–2} and class weighting ∈ {balanced, none}, 12 combinations in all
+([`results/baseline_grid.csv`](results/baseline_grid.csv)). Best: **C = 16, uni+bigrams, balanced**,
+validation macro-F1 0.776, compared with 0.771 for the default C = 4.
+
+### 8.4 Final evaluation on the test set
+
+The default and tuned BERT configurations were retrained on the 20k subset and scored **once** on the
+held-out test split, which no earlier step had looked at:
+
+| Model | Test macro-F1 | Test accuracy | Test top-3 accuracy |
+|---|---:|---:|---:|
+| TF-IDF + LogReg (tuned) | 0.778 | 0.770 | 0.955 |
+| BERT-base, default | 0.779 | 0.771 | **0.957** |
+| **BERT-base, tuned** | **0.782** | **0.773** | 0.955 |
+
+![Final test results](reports/figures/fig16_final_test.png)
+
+Tuned BERT is the best model, but **all three are within 0.4 macro-F1 points** of each other. That is
+inside the run-to-run noise usually seen for BERT fine-tuning, so the honest conclusion is that tuning
+did not reliably improve on the default at this data size. The +1.4-point gain found on 10k papers
+shrank on 20k papers, where the default learning rate gets more update steps and under-trains less.
+Only one seed per configuration fitted in the time budget: the notebook skipped seeds 43 and 44
+because 0.87 h remained and a seed needed about 1.05 h. Validation and test scores agree to within
+0.3 points for every model, so the validation split was not over-fitted during selection.
+Full results: [`results/final_results_runs.csv`](results/final_results_runs.csv) and
+[`results/final_configs.json`](results/final_configs.json).
 
 
-<!-- RESULTS:TUNING -->
+## 9. Conclusions
 
-<!-- RESULTS:CONCLUSIONS -->
+1. **The best number of categories is 12** (robust range 12–16). Six label-free criteria on SPECTER2
+   embeddings vote for it, a second encoder agrees, and, independently, supervised models find the 12
+   discovered categories **easier to predict than arXiv's own 8 groups** (validation macro-F1 0.801 vs
+   0.789 for BERT, 0.795 vs 0.779 for TF-IDF). Topic-based classes are cleaner than arXiv's
+   administrative ones.
+2. **About 12 is also where predictability falls off.** Going from 12 to 20 classes costs about
+   10 macro-F1 points, and 148 classes cost 30, because many fine arXiv categories are near-duplicates
+   in content. Every one of the most confused fine-category pairs lies inside one discovered category.
+3. **Best model: fine-tuned `bert-base-uncased`**, with test macro-F1 0.782 and top-3 accuracy 0.955
+   on the 12 categories (20k training papers), and validation macro-F1 0.801 when trained on all
+   59,200 papers. For 12 classes the right answer is in the model's top 3 for 19 of 20 papers.
+4. **But a tuned TF-IDF baseline is within half a point of it.** For topic classification of
+   scientific abstracts, technical vocabulary carries most of the signal, and BERT's advantage is small
+   at 8–12 classes and negative at 20+ classes with default settings. Tuning helped most through the
+   learning rate, and its gain was within run-to-run noise on the test set.
+5. **Practical recommendation:** use 12 topic categories; deploy TF-IDF + logistic regression where
+   cost matters (1 minute of CPU vs 30 minutes of GPU, for −0.4 points), or DistilBERT/BERT with a
+   higher learning rate (≈ 5e-5 to 1e-4) when the last point of accuracy matters.
+
+## 10. Limitations and future work
+
+- **Single-label assumption.** 48% of papers are cross-listed, but each is scored only against its
+  primary category, so many "errors" are defensible answers. A multi-label formulation (sigmoid
+  outputs, scored against all listed categories) would measure the models more fairly.
+- **Sampled data.** Models were trained on a class-balanced sample of 74,000 of the 3.1M usable
+  papers, and §8 on a 20k subset of that. Results on the natural, highly imbalanced distribution
+  will differ. Going from 20k to 59k training papers raised both models by about 2 points
+  (§7 vs §8), so more data would help, but it did not change their ranking.
+- **One seed in the final comparison.** The differences in §8.4 are smaller than typical seed
+  variance; more seeds (and a paired significance test) are needed to rank the models with
+  confidence.
+- **Short training.** BERT was still improving after 3 epochs in §7. Longer schedules, a
+  domain-specific checkpoint such as SciBERT, or fine-tuning SPECTER2 itself may widen BERT's lead
+  over TF-IDF; they did not fit the free-GPU budget of this project.
+- **Truncation.** 32% of inputs exceed 256 tokens. Max length had little effect in the search, but
+  head+tail truncation (Sun et al., 2019) was not tried.
+- **PyTorch rather than TensorFlow.** The task's link filters for TensorFlow checkpoints; the same
+  checkpoints are used, through PyTorch, because the installed 🤗 Transformers 5 no longer supports
+  TensorFlow.
+- **Choice of k.** k-means and Ward clustering assume roughly spherical, similarly sized clusters,
+  and the k-selection criteria disagree individually; the result is a well-supported range (12–16)
+  rather than a single exact number.
 
 ## 11. How to reproduce
 
@@ -333,5 +466,7 @@ python kaggle/run.py push 04 --gpu    && python kaggle/run.py pull 04   # ≤ 6 
 
 `push` uploads `src/` and the notebooks as a private Kaggle dataset and starts a private Kaggle
 notebook. `pull` waits for it to finish, then copies the figures, results tables and the executed
-notebook back into the repo. Seeds are fixed (42) throughout. Library versions are pinned in
+notebook back into the repo. Seeds are fixed (42) throughout. Figures 13, 15 and 16 were redrawn
+locally from the saved results after a labelling fix, so the copies embedded in the executed
+notebooks show an earlier version of those charts with the same data. Library versions are pinned in
 `requirements.txt` to match the Kaggle image the results were produced with.

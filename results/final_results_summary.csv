@@ -1,0 +1,7 @@
+config,split,accuracy,macro_f1,micro_f1,top3_accuracy
+baseline (tuned),test,0.7703 (n=1),0.7778 (n=1),0.7703 (n=1),0.9554 (n=1)
+baseline (tuned),val,0.7688 (n=1),0.7761 (n=1),0.7688 (n=1),0.9536 (n=1)
+default,test,0.7705 (n=1),0.7789 (n=1),0.7705 (n=1),0.9574 (n=1)
+default,val,0.7708 (n=1),0.7783 (n=1),0.7708 (n=1),0.9562 (n=1)
+tuned,test,0.7732 (n=1),0.7816 (n=1),0.7732 (n=1),0.9554 (n=1)
+tuned,val,0.7723 (n=1),0.7794 (n=1),0.7723 (n=1),0.9565 (n=1)

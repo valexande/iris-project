@@ -76,4 +76,7 @@ def baseline_grid(tr_texts, y_tr, va_texts, y_va, names) -> pd.DataFrame:
 
 
 def mean_std(values) -> str:
+    """'mean ± std' over seeds; just the value when there is only one run."""
+    if len(values) == 1:
+        return f"{np.mean(values):.4f} (n=1)"
     return f"{np.mean(values):.4f} ± {np.std(values):.4f}"

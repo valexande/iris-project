@@ -1,0 +1,207 @@
+{
+  "model": "bert-base-uncased",
+  "default": {
+    "model_name": "bert-base-uncased",
+    "max_length": 256,
+    "learning_rate": 2e-05,
+    "batch_size": 32,
+    "epochs": 3,
+    "warmup_ratio": 0.1,
+    "weight_decay": 0.01,
+    "loss": "weighted_ce",
+    "focal_gamma": 2.0,
+    "dropout": null,
+    "early_stopping_patience": 1,
+    "seed": 42
+  },
+  "tuned": {
+    "model_name": "bert-base-uncased",
+    "max_length": 256,
+    "learning_rate": 9.682112333570124e-05,
+    "batch_size": 32,
+    "epochs": 3,
+    "warmup_ratio": 0.07712288059246292,
+    "weight_decay": 0.05269810603715661,
+    "loss": "weighted_ce",
+    "focal_gamma": 2.0,
+    "dropout": 0.07015242400752526,
+    "early_stopping_patience": 1,
+    "seed": 42
+  },
+  "per_class_test": {
+    "default": {
+      "AI, language, data & software": {
+        "precision": 0.7003968253968254,
+        "recall": 0.7844444444444445,
+        "f1-score": 0.740041928721174,
+        "support": 450.0
+      },
+      "Algebra, geometry & topology": {
+        "precision": 0.8052980132450331,
+        "recall": 0.8685714285714285,
+        "f1-score": 0.8357388316151203,
+        "support": 700.0
+      },
+      "Analysis, dynamics & math. physics": {
+        "precision": 0.6897905759162304,
+        "recall": 0.65875,
+        "f1-score": 0.6739130434782609,
+        "support": 800.0
+      },
+      "Astrophysics": {
+        "precision": 0.8544891640866873,
+        "recall": 0.92,
+        "f1-score": 0.8860353130016051,
+        "support": 300.0
+      },
+      "Computational science, biology & fluids": {
+        "precision": 0.7880299251870324,
+        "recall": 0.7435294117647059,
+        "f1-score": 0.7651331719128329,
+        "support": 850.0
+      },
+      "Condensed matter, quantum & atomic": {
+        "precision": 0.7940251572327044,
+        "recall": 0.8416666666666667,
+        "f1-score": 0.8171521035598706,
+        "support": 600.0
+      },
+      "Discrete math, logic & theory of CS": {
+        "precision": 0.7621283255086072,
+        "recall": 0.6957142857142857,
+        "f1-score": 0.7274085138162808,
+        "support": 700.0
+      },
+      "High-energy, nuclear & gravitation": {
+        "precision": 0.8507670850767085,
+        "recall": 0.8133333333333334,
+        "f1-score": 0.8316291751874574,
+        "support": 750.0
+      },
+      "ML, vision & signals": {
+        "precision": 0.7248603351955307,
+        "recall": 0.7414285714285714,
+        "f1-score": 0.7330508474576272,
+        "support": 700.0
+      },
+      "Quantitative finance": {
+        "precision": 0.8211586901763224,
+        "recall": 0.9314285714285714,
+        "f1-score": 0.8728246318607764,
+        "support": 350.0
+      },
+      "Statistics, economics & social sci.": {
+        "precision": 0.7489539748953975,
+        "recall": 0.716,
+        "f1-score": 0.7321063394683026,
+        "support": 750.0
+      },
+      "Systems, networks & info. theory": {
+        "precision": 0.7488372093023256,
+        "recall": 0.7155555555555555,
+        "f1-score": 0.7318181818181818,
+        "support": 450.0
+      },
+      "accuracy": 0.7705405405405406,
+      "macro avg": {
+        "precision": 0.7740612734349503,
+        "recall": 0.7858685224089635,
+        "f1-score": 0.7789043401581243,
+        "support": 7400.0
+      },
+      "weighted avg": {
+        "precision": 0.7700502790037055,
+        "recall": 0.7705405405405406,
+        "f1-score": 0.7694002066017626,
+        "support": 7400.0
+      }
+    },
+    "tuned": {
+      "AI, language, data & software": {
+        "precision": 0.7270642201834863,
+        "recall": 0.7044444444444444,
+        "f1-score": 0.7155756207674944,
+        "support": 450.0
+      },
+      "Algebra, geometry & topology": {
+        "precision": 0.8254847645429363,
+        "recall": 0.8514285714285714,
+        "f1-score": 0.8382559774964838,
+        "support": 700.0
+      },
+      "Analysis, dynamics & math. physics": {
+        "precision": 0.6707021791767555,
+        "recall": 0.6925,
+        "f1-score": 0.6814268142681427,
+        "support": 800.0
+      },
+      "Astrophysics": {
+        "precision": 0.8885245901639345,
+        "recall": 0.9033333333333333,
+        "f1-score": 0.8958677685950414,
+        "support": 300.0
+      },
+      "Computational science, biology & fluids": {
+        "precision": 0.7775061124694377,
+        "recall": 0.7482352941176471,
+        "f1-score": 0.762589928057554,
+        "support": 850.0
+      },
+      "Condensed matter, quantum & atomic": {
+        "precision": 0.8460207612456747,
+        "recall": 0.815,
+        "f1-score": 0.830220713073005,
+        "support": 600.0
+      },
+      "Discrete math, logic & theory of CS": {
+        "precision": 0.7427325581395349,
+        "recall": 0.73,
+        "f1-score": 0.7363112391930836,
+        "support": 700.0
+      },
+      "High-energy, nuclear & gravitation": {
+        "precision": 0.8283093053735255,
+        "recall": 0.8426666666666667,
+        "f1-score": 0.8354263053536021,
+        "support": 750.0
+      },
+      "ML, vision & signals": {
+        "precision": 0.7364771151178918,
+        "recall": 0.7585714285714286,
+        "f1-score": 0.7473610133708656,
+        "support": 700.0
+      },
+      "Quantitative finance": {
+        "precision": 0.8195488721804511,
+        "recall": 0.9342857142857143,
+        "f1-score": 0.8731642189586115,
+        "support": 350.0
+      },
+      "Statistics, economics & social sci.": {
+        "precision": 0.7682215743440233,
+        "recall": 0.7026666666666667,
+        "f1-score": 0.733983286908078,
+        "support": 750.0
+      },
+      "Systems, networks & info. theory": {
+        "precision": 0.722707423580786,
+        "recall": 0.7355555555555555,
+        "f1-score": 0.7290748898678414,
+        "support": 450.0
+      },
+      "accuracy": 0.7732432432432432,
+      "macro avg": {
+        "precision": 0.7794416230432031,
+        "recall": 0.784890639589169,
+        "f1-score": 0.7816048146591502,
+        "support": 7400.0
+      },
+      "weighted avg": {
+        "precision": 0.7731804572895281,
+        "recall": 0.7732432432432432,
+        "f1-score": 0.7727490284250984,
+        "support": 7400.0
+      }
+    }
+  }
+}

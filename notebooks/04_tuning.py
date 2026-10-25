@@ -131,11 +131,13 @@ ax = axes[0]
 ax.plot(done["number"], done["value"], "o", color=viz.ACCENT, label="completed", mec=viz.SURFACE, mew=1.5, ms=8)
 ax.plot(done["number"], done["value"].cummax(), "-", color=viz.TEXT_2, lw=1.5, label="best so far")
 if len(pruned):
-    ax.plot(pruned["number"], [done["value"].min()] * len(pruned), "x", color=viz.SERIES[1], label="pruned")
+    # A pruned trial's value is its last intermediate score, recorded when the pruner stopped it.
+    ax.plot(pruned["number"], pruned["value"], "x", color=viz.SERIES[1], ms=8, mew=2,
+            label="pruned (score when stopped)")
 ax.set_xlabel("trial")
 ax.set_ylabel("validation macro-F1 (10k-paper trials)")
 ax.set_title("Optuna optimisation history")
-ax.legend(loc="lower right")
+ax.legend(loc="lower right", fontsize=8)
 
 try:
     imp = optuna.importance.get_param_importances(study)
@@ -229,7 +231,8 @@ for i, c in enumerate(order):
 ax.set_xticks(range(3), ["TF-IDF + LogReg\n(tuned)", f"{BEST_MODEL}\n(default)", f"{BEST_MODEL}\n(tuned)"])
 lo = t["macro_f1"].min()
 ax.set_ylim(max(0, lo - 0.08), min(1, t["macro_f1"].max() + 0.04))
-ax.set_ylabel("test macro-F1 (mean ± std over seeds)")
-ax.set_title(f"Final test results, {len(sp)} discovered categories")
+n_seeds = t.loc[t["config"] == "tuned", "seed"].nunique()
+ax.set_ylabel("test macro-F1" + (f" (mean ± std, {n_seeds} seeds)" if n_seeds > 1 else " (one seed)"))
+ax.set_title(f"Final test results, {len(sp)} discovered categories: all three within 0.4 points")
 ax.grid(axis="x", visible=False)
 viz.save(fig, "fig16_final_test", FIG_DIR)

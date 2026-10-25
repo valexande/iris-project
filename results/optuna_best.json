@@ -1,0 +1,23 @@
+{
+  "best_params": {
+    "learning_rate": 9.682112333570124e-05,
+    "batch_size": 32,
+    "epochs": 3,
+    "warmup_ratio": 0.07712288059246292,
+    "weight_decay": 0.05269810603715661,
+    "max_length": 256,
+    "loss": "weighted_ce",
+    "dropout": 0.07015242400752526
+  },
+  "best_value": 0.7661513852527682,
+  "importance": {
+    "learning_rate": 0.28027918209348135,
+    "dropout": 0.2599053640055384,
+    "weight_decay": 0.23364067454739915,
+    "warmup_ratio": 0.22114034183689527,
+    "epochs": 0.0035493479608570597,
+    "batch_size": 0.0009865509201145294,
+    "max_length": 0.000362948039742302,
+    "loss": 0.00013559059597200275
+  }
+}
